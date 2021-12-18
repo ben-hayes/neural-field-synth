@@ -7,18 +7,18 @@ import torchaudio
 
 
 class NSynthDataset(torch.utils.data.Dataset):
-    num_instruments = 1006
+    num_instruments: int = 1006
 
-    def __init__(self, data_path):
+    def __init__(self, data_path: str):
         self.data_path = data_path
         with open(os.path.join(data_path, "examples.json")) as f:
             self.metadata = json.load(f)
         self.keys = list(self.metadata.keys())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.metadata)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
         key = self.keys[idx]
         meta = self.metadata[key]
 

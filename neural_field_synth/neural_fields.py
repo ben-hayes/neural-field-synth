@@ -11,7 +11,12 @@ class SirenLayer(nn.Module):
     """Base class for SIREN layers"""
 
     def __init__(
-        self, in_features, out_features, bias=True, is_first=False, omega_0=30
+        self,
+        in_features: torch.tensor,
+        out_features: torch.tensor,
+        bias: bool = True,
+        is_first: bool = False,
+        omega_0: int = 30,
     ):
         super().__init__()
         self.omega_0 = omega_0
@@ -36,14 +41,14 @@ class SirenLayer(nn.Module):
 class SineLayer(nn.Module):
     """Implements the basic Sine layer at the core of SIREN"""
 
-    def forward(self, input):
+    def forward(self, input: torch.tensor) -> torch.tensor:
         return torch.sin(self.omega_0 * self.linear(input))
 
 
 class SineFiLMLayer(nn.Module):
     """Implements the basic Sine layer at the core of SIREN"""
 
-    def forward(self, input, gamma, beta):
+    def forward(self, input: torch.tensor, gamma: torch.tensor, beta: torch.tensor) -> torch.tensor:
         # TODO: compare omega_0 * (x + beta) to (omega_0 * x) + beta
         return torch.sin(self.omega_0 * self.linear(input) * gamma + beta)
 
@@ -53,13 +58,13 @@ class BaseSiren(nn.Module):
 
     def __init__(
         self,
-        in_features,
-        hidden_features,
-        hidden_layers,
-        out_features,
-        outermost_linear=False,
-        first_omega_0=30,
-        hidden_omega_0=30.0,
+        in_features: int,
+        hidden_features: int,
+        hidden_layers: int,
+        out_features: int,
+        outermost_linear: bool = False,
+        first_omega_0: int = 30,
+        hidden_omega_0: int = 30.0,
         layer=SineLayer,
     ):
         super().__init__()
@@ -105,13 +110,13 @@ class Siren(nn.Module):
 
     def __init__(
         self,
-        in_features,
-        hidden_features,
-        hidden_layers,
-        out_features,
-        outermost_linear=False,
-        first_omega_0=30,
-        hidden_omega_0=30.0,
+        in_features: int,
+        hidden_features: int,
+        hidden_layers: int,
+        out_features: int,
+        outermost_linear: bool = False,
+        first_omega_0: int = 30,
+        hidden_omega_0: int = 30.0,
     ):
         super().__init__(
             in_features,
@@ -126,7 +131,7 @@ class Siren(nn.Module):
 
         self.net = nn.Sequential(*self.net)
 
-    def forward(self, coords):
+    def forward(self, coords: torch.tensor) -> torch.tensor:
         output = self.net(coords)
         return output
 
@@ -136,13 +141,13 @@ class SirenFiLM(nn.Module):
 
     def __init__(
         self,
-        in_features,
-        hidden_features,
-        hidden_layers,
-        out_features,
-        outermost_linear=False,
-        first_omega_0=30,
-        hidden_omega_0=30.0,
+        in_features: int,
+        hidden_features: int,
+        hidden_layers: int,
+        out_features: int,
+        outermost_linear: bool = False,
+        first_omega_0: int = 30,
+        hidden_omega_0: int = 30.0,
     ):
         super().__init__(
             in_features,
@@ -157,7 +162,9 @@ class SirenFiLM(nn.Module):
 
         self.net = nn.ModuleList(self.net)
 
-    def forward(self, coords, scale, shift):
+    def forward(
+        self, coords: torch.tensor, scale: torch.tensor, shift: torch.tensor
+    ) -> torch.tensor:
         x = coords
         for i, layer in enumerate(self.net[:-1]):
             x = layer(x, scale[i], shift[i])
