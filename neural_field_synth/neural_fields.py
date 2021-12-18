@@ -49,6 +49,8 @@ class SineFiLMLayer(nn.Module):
 
 
 class BaseSiren(nn.Module):
+    """Base class for SIREN models"""
+
     def __init__(
         self,
         in_features,
@@ -99,6 +101,8 @@ class BaseSiren(nn.Module):
 
 
 class Siren(nn.Module):
+    """Basic SIREN implementation"""
+
     def __init__(
         self,
         in_features,
@@ -108,7 +112,6 @@ class Siren(nn.Module):
         outermost_linear=False,
         first_omega_0=30,
         hidden_omega_0=30.0,
-        layer=SineLayer,
     ):
         super().__init__(
             in_features,
@@ -118,6 +121,7 @@ class Siren(nn.Module):
             outermost_linear,
             first_omega_0,
             hidden_omega_0,
+            layer=SineLayer,
         )
 
         self.net = nn.Sequential(*self.net)
@@ -128,6 +132,8 @@ class Siren(nn.Module):
 
 
 class SirenFiLM(nn.Module):
+    """FiLM conditioned SIREN implementation"""
+
     def __init__(
         self,
         in_features,
@@ -137,7 +143,6 @@ class SirenFiLM(nn.Module):
         outermost_linear=False,
         first_omega_0=30,
         hidden_omega_0=30.0,
-        layer=SineFiLMLayer,
     ):
         super().__init__(
             in_features,
@@ -147,6 +152,7 @@ class SirenFiLM(nn.Module):
             outermost_linear,
             first_omega_0,
             hidden_omega_0,
+            layer=SineFiLMLayer,
         )
 
         self.net = nn.ModuleList(self.net)

@@ -8,4 +8,5 @@ setup(
     author_email="b.j.hayes@qmul.ac.uk",
     url="https://github.com/ben-hayes/neural-field-synth",
     packages=["neural_field_synth"],
+    install_requires=["torch==1.10.1", "numpy==1.21.4", "torchaudio==0.10.1"],
 )
