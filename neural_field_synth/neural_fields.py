@@ -169,7 +169,7 @@ class SirenFiLM(BaseSiren):
     ) -> torch.tensor:
         x = coords
         for i, layer in enumerate(self.net[:-1]):
-            x = layer(x, scale[i], shift[i])
+            x = layer(x, scale[..., i, :], shift[..., i, :])
         output = self.net[-1](x)
 
         return output

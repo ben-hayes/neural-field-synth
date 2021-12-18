@@ -28,7 +28,7 @@ def make_wavetable_spiral(
     if pitch.ndim == 1:
         pitch = pitch[None, ...]
 
-    if pitch.ndim == 2 and pitch.shape[-1] == 1:
+    if pitch.ndim == 2 and pitch.shape[0] == 1:
         freq = freq.expand_as(t)
 
     phase = freq.cumsum(dim=0) * 2 * np.pi / sample_rate + initial_phase[None]
@@ -46,5 +46,6 @@ def make_fir_sample_signal(
         :, None, None, None
     ]
     ir_axis = ir_axis.expand([ir_axis.shape[0]] + list(time_steps.shape[1:]))
+    time_steps = time_steps.expand(ir_axis.shape[0], -1, -1, -1)
 
     return torch.cat((time_steps, ir_axis), dim=-1)

@@ -8,7 +8,13 @@ from neural_field_synth.signal import FIRNoiseSynth
 from torchtyping import TensorType
 
 from .neural_fields import SirenFiLM
-from .utils import NSYNTH_NUM_INSTRUMENTS, make_fir_sample_signal, make_wavetable_spiral
+from .utils import (
+    NSYNTH_MAX_PITCH,
+    NSYNTH_MAX_VEL,
+    NSYNTH_NUM_INSTRUMENTS,
+    make_fir_sample_signal,
+    make_wavetable_spiral,
+)
 
 
 class MLP(nn.Module):
@@ -54,6 +60,10 @@ class NeuralFieldSynth(nn.Module):
     ):
         super().__init__()
 
+        self.sample_rate = sample_rate
+        self.field_hidden_layers = field_hidden_layers
+        self.field_hidden_size = field_hidden_size
+
         self.wave_field = SirenFiLM(
             3,
             field_hidden_size,
@@ -76,13 +86,13 @@ class NeuralFieldSynth(nn.Module):
         self.wave_mlp = MLP(
             4,
             mlp_hidden_size,
-            field_hidden_layers * field_hidden_size * 2,
+            (field_hidden_layers + 1) * field_hidden_size * 2,
             mlp_hidden_layers,
         )
         self.noise_mlp = MLP(
             4,
             mlp_hidden_size,
-            field_hidden_layers * field_hidden_size * 2,
+            (field_hidden_layers + 1) * field_hidden_size * 2,
             mlp_hidden_layers,
         )
 
@@ -91,6 +101,8 @@ class NeuralFieldSynth(nn.Module):
         self.noise_synth = FIRNoiseSynth(
             noise_ir_length, noise_window_length, noise_hop_length, noise_window_fn
         )
+        self.noise_hop_length = noise_hop_length
+        self.noise_ir_length = noise_ir_length
 
     def forward(
         self,
@@ -100,24 +112,46 @@ class NeuralFieldSynth(nn.Module):
         instrument: TensorType["batch", "instruments"],
     ) -> torch.tensor:
         instrument_embed = self.instrument_embedding(instrument)
-        film_mlp_input = torch.cat((instrument_embed, pitch, velocity), dim=-1)
-        wave_film = self.wave_mlp(film_mlp_input)
-        noise_film = self.noise_mlp(film_mlp_input)
+        film_mlp_input = torch.cat(
+            (
+                instrument_embed,
+                pitch[..., None] / NSYNTH_MAX_PITCH,
+                velocity[..., None] / NSYNTH_MAX_VEL,
+            ),
+            dim=-1,
+        )
+        if film_mlp_input.ndim == 2:
+            film_mlp_input = film_mlp_input[None]
+
+        wave_film = self.wave_mlp(film_mlp_input).view(
+            film_mlp_input.shape[0],
+            film_mlp_input.shape[1],
+            self.field_hidden_layers + 1,
+            self.field_hidden_size,
+            2,
+        )
+        noise_film = self.noise_mlp(film_mlp_input).view(
+            film_mlp_input.shape[0],
+            film_mlp_input.shape[1],
+            self.field_hidden_layers + 1,
+            self.field_hidden_size,
+            2,
+        )
 
         wave_scale, wave_shift = (
-            wave_film[..., : wave_film.shape[-1] // 2],
-            wave_film[..., wave_film.shape[-1] // 2 :],
+            wave_film[..., 0],
+            wave_film[..., 1],
         )
         noise_scale, noise_shift = (
-            noise_film[..., : noise_film.shape[-1] // 2],
-            noise_film[..., noise_film.shape[-1] // 2 :],
+            noise_film[..., 0],
+            noise_film[..., 1],
         )
 
         wavetable_spiral = make_wavetable_spiral(
             pitch, self.sample_rate, time, torch.rand_like(pitch) * 2 * np.pi
         )
         fir_sample_signal = make_fir_sample_signal(
-            self.fir_hop_length, self.fir_ir_length, time
+            self.noise_hop_length, self.noise_ir_length, time
         )
 
         wavetable_signal = self.wave_field(wavetable_spiral, wave_scale, wave_shift)
@@ -126,4 +160,4 @@ class NeuralFieldSynth(nn.Module):
 
         noise_signal = noise_signal[: wavetable_signal.shape[0]]
 
-        return noise_signal + wavetable_signal
+        return noise_signal + wavetable_signal[..., 0]
