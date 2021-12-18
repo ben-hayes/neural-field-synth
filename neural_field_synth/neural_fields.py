@@ -7,7 +7,7 @@ SIREN
 """
 
 
-class SirenLayer(nn.Module):
+class BaseSineLayer(nn.Module):
     """Base class for SIREN layers"""
 
     def __init__(
@@ -38,17 +38,19 @@ class SirenLayer(nn.Module):
                 )
 
 
-class SineLayer(nn.Module):
+class SineLayer(BaseSineLayer):
     """Implements the basic Sine layer at the core of SIREN"""
 
     def forward(self, input: torch.tensor) -> torch.tensor:
         return torch.sin(self.omega_0 * self.linear(input))
 
 
-class SineFiLMLayer(nn.Module):
+class SineFiLMLayer(BaseSineLayer):
     """Implements the basic Sine layer at the core of SIREN"""
 
-    def forward(self, input: torch.tensor, gamma: torch.tensor, beta: torch.tensor) -> torch.tensor:
+    def forward(
+        self, input: torch.tensor, gamma: torch.tensor, beta: torch.tensor
+    ) -> torch.tensor:
         # TODO: compare omega_0 * (x + beta) to (omega_0 * x) + beta
         return torch.sin(self.omega_0 * self.linear(input) * gamma + beta)
 
@@ -105,7 +107,7 @@ class BaseSiren(nn.Module):
             )
 
 
-class Siren(nn.Module):
+class Siren(BaseSiren):
     """Basic SIREN implementation"""
 
     def __init__(
@@ -136,7 +138,7 @@ class Siren(nn.Module):
         return output
 
 
-class SirenFiLM(nn.Module):
+class SirenFiLM(BaseSiren):
     """FiLM conditioned SIREN implementation"""
 
     def __init__(
