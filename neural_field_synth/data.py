@@ -5,10 +5,10 @@ import numpy as np
 import torch
 import torchaudio
 
+from .utils import NSYNTH_NUM_INSTRUMENTS
+
 
 class NSynthDataset(torch.utils.data.Dataset):
-    num_instruments: int = 1006
-
     def __init__(self, data_path: str):
         self.data_path = data_path
         with open(os.path.join(data_path, "examples.json")) as f:
@@ -26,7 +26,7 @@ class NSynthDataset(torch.utils.data.Dataset):
         pitch = meta["pitch"]
         velocity = meta["velocity"]
 
-        instrument = np.zeros(self.num_instruments)
+        instrument = np.zeros(NSYNTH_NUM_INSTRUMENTS)
         instrument[instrument_id] = 1
 
         audio, sr = torchaudio.load(
