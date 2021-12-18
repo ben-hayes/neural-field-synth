@@ -29,7 +29,9 @@ class NSynthDataset(torch.utils.data.Dataset):
         instrument = np.zeros(self.num_instruments)
         instrument[instrument_id] = 1
 
-        audio, sr = torchaudio.load(os.path.join(self.data_path, "%s.wav" % key))
+        audio, sr = torchaudio.load(
+            os.path.join(self.data_path, "audio", "%s.wav" % key)
+        )
 
         return {
             "audio": audio,
