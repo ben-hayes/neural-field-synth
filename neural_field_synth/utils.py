@@ -49,3 +49,7 @@ def make_fir_sample_signal(
     time_steps = time_steps.expand(ir_axis.shape[0], -1, -1, -1)
 
     return torch.cat((time_steps, ir_axis), dim=-1)
+
+
+def exp_sigmoid(x):
+    return 2.0 * torch.sigmoid(x) ** np.log(10) + 1e-7

@@ -13,6 +13,7 @@ from .utils import (
     NSYNTH_MAX_PITCH,
     NSYNTH_MAX_VEL,
     NSYNTH_NUM_INSTRUMENTS,
+    exp_sigmoid,
     make_fir_sample_signal,
     make_wavetable_spiral,
 )
@@ -58,6 +59,8 @@ NeuralFieldSynthOutput = namedtuple(
         "wavetable_spiral",
         "fir_sample_signal",
         "impulse_response",
+        "wave_film_params",
+        "noise_film_params",
     ),
 )
 
@@ -95,10 +98,10 @@ class NeuralFieldSynth(nn.Module):
             wave_field_hidden_omega_0,
         )
         self.noise_field = SirenFiLM(
-            2,
+            1,
             field_hidden_size,
             field_hidden_layers,
-            1,
+            noise_ir_length // 2 + 1,
             True,
             noise_field_first_omega_0,
             noise_field_hidden_omega_0,
@@ -186,13 +189,16 @@ class NeuralFieldSynth(nn.Module):
         wavetable_spiral = make_wavetable_spiral(
             pitch, self.sample_rate, time, torch.rand_like(pitch) * 2 * np.pi
         )
-        fir_sample_signal = make_fir_sample_signal(
-            self.noise_hop_length, self.noise_ir_length, time
-        )
+        # fir_sample_signal = make_fir_sample_signal(
+        #     self.noise_hop_length, self.noise_ir_length, time
+        # )
+        fir_sample_signal = time[:: self.noise_hop_length][..., None]
 
         wavetable_signal = self.wave_field(wavetable_spiral, wave_scale, wave_shift)
         noise_ir = self.noise_field(fir_sample_signal, noise_scale, noise_shift)
-        noise_signal = self.noise_synth(noise_ir[..., 0].permute(1, 2, 0))
+        noise_ir = exp_sigmoid(noise_ir)
+        # noise_signal = self.noise_synth(noise_ir[..., 0].permute(1, 2, 0))
+        noise_signal = self.noise_synth(noise_ir)
 
         noise_signal = noise_signal[: wavetable_signal.shape[0]]
 
@@ -209,6 +215,8 @@ class NeuralFieldSynth(nn.Module):
                 wavetable_spiral,
                 fir_sample_signal,
                 noise_ir,
+                (wave_scale, wave_shift),
+                (noise_scale, noise_shift),
             )
         # return wavetable_signal[..., 0]
 

@@ -89,11 +89,11 @@ class BaseSiren(nn.Module):
         if outermost_linear:
             final_linear = nn.Linear(hidden_features, out_features)
 
-            with torch.no_grad():
-                final_linear.weight.uniform_(
-                    -np.sqrt(6 / hidden_features) / hidden_omega_0,
-                    np.sqrt(6 / hidden_features) / hidden_omega_0,
-                )
+            # with torch.no_grad():
+            #     final_linear.weight.uniform_(
+            #         -np.sqrt(6 / hidden_features) / hidden_omega_0,
+            #         np.sqrt(6 / hidden_features) / hidden_omega_0,
+            #     )
 
             self.net.append(final_linear)
         else:

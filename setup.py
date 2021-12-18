@@ -10,9 +10,9 @@ setup(
     packages=["neural_field_synth"],
     install_requires=[
         "auraloss==0.2.1",
-        "torch==1.10.1",
+        "torch@https://download.pytorch.org/whl/cu113/torch-1.10.1%2Bcu113-cp39-cp39-linux_x86_64.whl",
         "numpy==1.21.4",
-        "torchaudio==0.10.1",
+        "torchaudio@https://download.pytorch.org/whl/cu113/torchaudio-0.10.1%2Bcu113-cp39-cp39-linux_x86_64.whl",
         "pytorch-lightning==1.5.6",
         "torchtyping==0.1.4",
     ],
