@@ -69,15 +69,15 @@ class NeuralFieldSynth(nn.Module):
     def __init__(
         self,
         sample_rate: int = 16000,
-        mlp_hidden_size: int = 128,
+        mlp_hidden_size: int = 1024,
         mlp_hidden_layers: int = 3,
-        field_hidden_size: int = 128,
+        field_hidden_size: int = 256,
         field_hidden_layers: int = 3,
-        wave_field_first_omega_0: int = 30,
-        wave_field_hidden_omega_0: int = 30,
-        noise_field_first_omega_0: int = 30,
-        noise_field_hidden_omega_0: int = 30,
-        noise_ir_length: int = 64,
+        wave_field_first_omega_0: float = 100,
+        wave_field_hidden_omega_0: float = 30,
+        noise_field_first_omega_0: float = 100,
+        noise_field_hidden_omega_0: float = 30,
+        noise_ir_length: int = 128,
         noise_window_length: int = 256,
         noise_hop_length: int = 128,
         noise_window_fn: Callable = torch.hann_window,
@@ -98,7 +98,7 @@ class NeuralFieldSynth(nn.Module):
             wave_field_hidden_omega_0,
         )
         self.noise_field = SirenFiLM(
-            1,
+            2,
             field_hidden_size,
             field_hidden_layers,
             noise_ir_length // 2 + 1,
@@ -189,20 +189,18 @@ class NeuralFieldSynth(nn.Module):
         wavetable_spiral = make_wavetable_spiral(
             pitch, self.sample_rate, time, torch.rand_like(pitch) * 2 * np.pi
         )
-        # fir_sample_signal = make_fir_sample_signal(
-        #     self.noise_hop_length, self.noise_ir_length, time
-        # )
-        fir_sample_signal = time[:: self.noise_hop_length][..., None]
+        fir_sample_signal = make_fir_sample_signal(
+            self.noise_hop_length, self.noise_ir_length, time
+        )
 
         wavetable_signal = self.wave_field(wavetable_spiral, wave_scale, wave_shift)
         noise_ir = self.noise_field(fir_sample_signal, noise_scale, noise_shift)
         noise_ir = exp_sigmoid(noise_ir)
-        # noise_signal = self.noise_synth(noise_ir[..., 0].permute(1, 2, 0))
-        noise_signal = self.noise_synth(noise_ir)
+        noise_signal = self.noise_synth(noise_ir[..., 0].permute(1, 2, 0))
 
-        noise_signal = noise_signal[: wavetable_signal.shape[0]]
+        noise_signal = noise_signal[: time.shape[0]]
 
-        output = 0.01 * noise_signal + wavetable_signal[..., 0]
+        output = wavetable_signal[..., 0] + noise_signal
 
         if not return_params:
             return output
@@ -218,7 +216,6 @@ class NeuralFieldSynth(nn.Module):
                 (wave_scale, wave_shift),
                 (noise_scale, noise_shift),
             )
-        # return wavetable_signal[..., 0]
 
 
 class LightningWrapper(pl.LightningModule):
