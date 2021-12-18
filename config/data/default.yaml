@@ -1,0 +1,8 @@
+dataset_cfg:
+  data_path: "/import/c4dm-datasets/nsynth/nsynth-train"
+  overfit: false
+dataloader_cfg:
+  batch_size: 4
+  shuffle: true
+  num_workers: 16
+  persistent_workers: true

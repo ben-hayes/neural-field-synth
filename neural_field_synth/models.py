@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from torchtyping import TensorType
+import wandb
 
 from .neural_fields import SirenFiLM
 from .signal import FIRNoiseSynth
@@ -247,4 +248,23 @@ class LightningWrapper(pl.LightningModule):
         recon = self(time, pitch, velocity, instrument)
 
         loss = self.loss_fn(recon.t(), target)
+        self.log("loss", loss, on_step=True, on_epoch=True)
+
+        if batch_idx % 1000 == 0:
+            self._log_audio(target[:, 0].t(), "target")
+            self._log_audio(recon, "recon")
+
         return loss
+
+    def _log_audio(self, audio_batch, caption):
+        for i in range(audio_batch.shape[-1]):
+            self.logger.experiment.log(
+                {
+                    "%s_%d"
+                    % (caption, i): wandb.Audio(
+                        audio_batch[:, i].detach().cpu().numpy(),
+                        self.model.sample_rate,
+                        "%s_%d" % (caption, i),
+                    )
+                },
+            )

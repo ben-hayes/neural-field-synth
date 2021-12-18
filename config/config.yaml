@@ -1,0 +1,6 @@
+defaults:
+ - model: default
+ - loss: multiscale_stft
+ - optimizer: adam_1e-3
+ - trainer: default
+ - data: default

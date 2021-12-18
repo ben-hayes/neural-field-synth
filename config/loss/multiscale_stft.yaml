@@ -1,0 +1,5 @@
+loss_fn: "multiscale_stft"
+params:
+  fft_sizes: [128, 256, 512, 1024, 2048]
+  hop_sizes: [64, 128, 256, 512, 1024]
+  win_lengths: [128, 256, 512, 1024, 2048]
