@@ -42,7 +42,7 @@ def make_fir_sample_signal(
     hop_length: int, ir_length: int, t: TensorType["time_in_samples", "batch"]
 ) -> TensorType["freq_bins", "time_in_hops", "batch", "features"]:
     time_steps = t[::hop_length][None, ..., None]
-    ir_axis = torch.linspace(0, 1, ir_length // 2 + 1, device=t.device)[
+    ir_axis = torch.linspace(-1, 1, ir_length // 2 + 1, device=t.device)[
         :, None, None, None
     ]
     ir_axis = ir_axis.expand([ir_axis.shape[0]] + list(time_steps.shape[1:]))

@@ -1,13 +1,14 @@
+from collections import namedtuple
 from typing import Callable, Union
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from neural_field_synth.signal import FIRNoiseSynth
 from torchtyping import TensorType
 
 from .neural_fields import SirenFiLM
+from .signal import FIRNoiseSynth
 from .utils import (
     NSYNTH_MAX_PITCH,
     NSYNTH_MAX_VEL,
@@ -28,9 +29,15 @@ class MLP(nn.Module):
     ):
         super().__init__()
 
-        net = [nn.Linear(in_features, hidden_features), nonlinearity()]
+        net = [
+            nn.Linear(in_features, hidden_features),
+            nonlinearity(),
+        ]
         for _ in range(hidden_layers):
-            net += [nn.Linear(hidden_features, hidden_features), nonlinearity()]
+            net += [
+                nn.Linear(hidden_features, hidden_features),
+                nonlinearity(),
+            ]
 
         net += [nn.Linear(hidden_features, out_features)]
         self.net = nn.Sequential(*net)
@@ -39,6 +46,20 @@ class MLP(nn.Module):
         self, x: TensorType[..., "batch", "in_features"]
     ) -> TensorType[..., "batch", "out_features"]:
         return self.net(x)
+
+
+NeuralFieldSynthOutput = namedtuple(
+    "NeuralFieldSynthOutput",
+    (
+        "output",
+        "wavetable_signal",
+        "noise_signal",
+        "instrument_embedding",
+        "wavetable_spiral",
+        "fir_sample_signal",
+        "impulse_response",
+    ),
+)
 
 
 class NeuralFieldSynth(nn.Module):
@@ -104,14 +125,11 @@ class NeuralFieldSynth(nn.Module):
         self.noise_hop_length = noise_hop_length
         self.noise_ir_length = noise_ir_length
 
-    def forward(
-        self,
-        time: TensorType["time_in_samples", "batch"],
-        pitch: Union[TensorType["batch"], TensorType["time_in_samples", "batch"]],
-        velocity: Union[TensorType["batch"], TensorType["time_in_samples", "batch"]],
-        instrument: TensorType["batch", "instruments"],
-    ) -> torch.tensor:
+    def _make_instrument_embed(self, instrument):
         instrument_embed = self.instrument_embedding(instrument)
+        return instrument_embed
+
+    def _make_film_inputs(self, instrument_embed, pitch, velocity):
         film_mlp_input = torch.cat(
             (
                 instrument_embed,
@@ -122,7 +140,9 @@ class NeuralFieldSynth(nn.Module):
         )
         if film_mlp_input.ndim == 2:
             film_mlp_input = film_mlp_input[None]
+        return film_mlp_input
 
+    def _get_film_params(self, film_mlp_input):
         wave_film = self.wave_mlp(film_mlp_input).view(
             film_mlp_input.shape[0],
             film_mlp_input.shape[1],
@@ -147,6 +167,22 @@ class NeuralFieldSynth(nn.Module):
             noise_film[..., 1],
         )
 
+        return wave_scale, wave_shift, noise_scale, noise_shift
+
+    def forward(
+        self,
+        time: TensorType["time_in_samples", "batch"],
+        pitch: Union[TensorType["batch"], TensorType["time_in_samples", "batch"]],
+        velocity: Union[TensorType["batch"], TensorType["time_in_samples", "batch"]],
+        instrument: TensorType["batch", "instruments"],
+        return_params: bool = False,
+    ) -> Union[torch.tensor, NeuralFieldSynthOutput]:
+        instrument_embed = self._make_instrument_embed(instrument)
+        film_mlp_input = self._make_film_inputs(instrument_embed, pitch, velocity)
+        wave_scale, wave_shift, noise_scale, noise_shift = self._get_film_params(
+            film_mlp_input
+        )
+
         wavetable_spiral = make_wavetable_spiral(
             pitch, self.sample_rate, time, torch.rand_like(pitch) * 2 * np.pi
         )
@@ -160,4 +196,50 @@ class NeuralFieldSynth(nn.Module):
 
         noise_signal = noise_signal[: wavetable_signal.shape[0]]
 
-        return noise_signal + wavetable_signal[..., 0]
+        output = 0.01 * noise_signal + wavetable_signal[..., 0]
+
+        if not return_params:
+            return output
+        else:
+            return NeuralFieldSynthOutput(
+                output,
+                wavetable_signal,
+                noise_signal,
+                instrument_embed,
+                wavetable_spiral,
+                fir_sample_signal,
+                noise_ir,
+            )
+        # return wavetable_signal[..., 0]
+
+
+class LightningWrapper(pl.LightningModule):
+    def __init__(self, model, loss_fn, learning_rate=1e-3):
+        super().__init__()
+
+        self.model = model
+        self.loss_fn = loss_fn
+
+        self.learning_rate = learning_rate
+
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        return optimizer
+
+    def training_step(self, batch, batch_idx):
+        target = batch["audio"].float()
+        instrument = batch["instrument"].float()
+        pitch = batch["pitch"].float()
+        velocity = batch["velocity"].float()
+
+        time = torch.linspace(-1, 1, target.shape[-1], device=target.device)[
+            ..., None
+        ].expand(-1, target.shape[0])
+
+        recon = self(time, pitch, velocity, instrument)
+
+        loss = self.loss_fn(recon.t(), target)
+        return loss

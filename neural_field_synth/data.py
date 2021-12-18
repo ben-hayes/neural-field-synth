@@ -9,16 +9,21 @@ from .utils import NSYNTH_NUM_INSTRUMENTS
 
 
 class NSynthDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, overfit: bool = False):
         self.data_path = data_path
         with open(os.path.join(data_path, "examples.json")) as f:
             self.metadata = json.load(f)
         self.keys = list(self.metadata.keys())
 
+        self.overfit = overfit
+
     def __len__(self) -> int:
         return len(self.metadata)
 
     def __getitem__(self, idx: int) -> dict:
+        if self.overfit:
+            idx = 123
+
         key = self.keys[idx]
         meta = self.metadata[key]
 
