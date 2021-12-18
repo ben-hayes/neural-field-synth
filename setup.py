@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name="neural field synth",
+    name="neural_field_synth",
     version="0.0.1",
     description="A differentiable synthesiser driven by neural fields built for NASH 2021",
     author="Ben Hayes",
