@@ -22,7 +22,7 @@ class NSynthDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx: int) -> dict:
         if self.overfit:
-            idx = 123
+            idx = 101
 
         key = self.keys[idx]
         meta = self.metadata[key]

@@ -70,6 +70,7 @@ class NeuralFieldSynth(nn.Module):
     def __init__(
         self,
         sample_rate: int = 16000,
+        instrument_embedding_size: int = 2,
         mlp_hidden_size: int = 1024,
         mlp_hidden_layers: int = 3,
         field_hidden_size: int = 256,
@@ -82,6 +83,7 @@ class NeuralFieldSynth(nn.Module):
         noise_window_length: int = 256,
         noise_hop_length: int = 128,
         noise_window_fn: Callable = torch.hann_window,
+        freeze_siren: bool = False,
     ):
         super().__init__()
 
@@ -97,6 +99,7 @@ class NeuralFieldSynth(nn.Module):
             True,
             wave_field_first_omega_0,
             wave_field_hidden_omega_0,
+            freeze=freeze_siren,
         )
         self.noise_field = SirenFiLM(
             2,
@@ -106,22 +109,25 @@ class NeuralFieldSynth(nn.Module):
             True,
             noise_field_first_omega_0,
             noise_field_hidden_omega_0,
+            freeze=freeze_siren,
         )
 
         self.wave_mlp = MLP(
-            4,
+            instrument_embedding_size + 2,
             mlp_hidden_size,
             (field_hidden_layers + 1) * field_hidden_size * 2,
             mlp_hidden_layers,
         )
         self.noise_mlp = MLP(
-            4,
+            instrument_embedding_size + 2,
             mlp_hidden_size,
             (field_hidden_layers + 1) * field_hidden_size * 2,
             mlp_hidden_layers,
         )
 
-        self.instrument_embedding = nn.Linear(NSYNTH_NUM_INSTRUMENTS, 2, bias=False)
+        self.instrument_embedding = nn.Linear(
+            NSYNTH_NUM_INSTRUMENTS, instrument_embedding_size, bias=False
+        )
 
         self.noise_synth = FIRNoiseSynth(
             noise_ir_length, noise_window_length, noise_hop_length, noise_window_fn
@@ -147,14 +153,14 @@ class NeuralFieldSynth(nn.Module):
         return film_mlp_input
 
     def _get_film_params(self, film_mlp_input):
-        wave_film = self.wave_mlp(film_mlp_input).view(
+        wave_film = self.wave_mlp(film_mlp_input).reshape(
             film_mlp_input.shape[0],
             film_mlp_input.shape[1],
             self.field_hidden_layers + 1,
             self.field_hidden_size,
             2,
         )
-        noise_film = self.noise_mlp(film_mlp_input).view(
+        noise_film = self.noise_mlp(film_mlp_input).reshape(
             film_mlp_input.shape[0],
             film_mlp_input.shape[1],
             self.field_hidden_layers + 1,
@@ -197,7 +203,9 @@ class NeuralFieldSynth(nn.Module):
         wavetable_signal = self.wave_field(wavetable_spiral, wave_scale, wave_shift)
         noise_ir = self.noise_field(fir_sample_signal, noise_scale, noise_shift)
         noise_ir = exp_sigmoid(noise_ir)
-        noise_signal = self.noise_synth(noise_ir[..., 0].permute(1, 2, 0))
+        noise_signal = self.noise_synth(
+            noise_ir[..., 0].permute(1, 2, 0), length=time.shape[0]
+        )
 
         noise_signal = noise_signal[: time.shape[0]]
 
@@ -220,13 +228,15 @@ class NeuralFieldSynth(nn.Module):
 
 
 class LightningWrapper(pl.LightningModule):
-    def __init__(self, model, loss_fn, learning_rate=1e-3):
+    def __init__(self, model, loss_fn, learning_rate=1e-3, log_audio: bool = True):
         super().__init__()
 
         self.model = model
         self.loss_fn = loss_fn
 
         self.learning_rate = learning_rate
+
+        self.log_audio = log_audio
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
@@ -250,7 +260,7 @@ class LightningWrapper(pl.LightningModule):
         loss = self.loss_fn(recon.t(), target)
         self.log("loss", loss, on_step=True, on_epoch=True)
 
-        if batch_idx % 1000 == 0:
+        if self.global_step % 1000 == 0 and self.log_audio:
             self._log_audio(target[:, 0].t(), "target")
             self._log_audio(recon, "recon")
 

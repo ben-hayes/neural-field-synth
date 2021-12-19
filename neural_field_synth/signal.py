@@ -18,8 +18,9 @@ class FIRNoiseSynth(nn.Module):
         self.window_length = window_length
         self.hop_length = hop_length
         self.register_buffer("window", window_fn(ir_length))
+        self.register_buffer("inv_window", window_fn(window_length))
 
-    def forward(self, H_re: torch.tensor) -> torch.tensor:
+    def forward(self, H_re: torch.tensor, length=None) -> torch.tensor:
         # H_re: [time, batch, feat]
         H_im = torch.zeros_like(H_re)
         H_z = torch.complex(H_re, H_im)
@@ -34,5 +35,11 @@ class FIRNoiseSynth(nn.Module):
         X = torch.stft(noise, self.window_length, self.hop_length, return_complex=True)
         X = X.unsqueeze(0)
         Y = X * H.permute(1, 2, 0)
-        y = torch.istft(Y, self.window_length, self.hop_length, center=False)
+        y = torch.istft(
+            Y,
+            self.window_length,
+            self.hop_length,
+            length=length,
+            window=self.inv_window,
+        )
         return y.t()[: H_re.shape[0] * self.hop_length]

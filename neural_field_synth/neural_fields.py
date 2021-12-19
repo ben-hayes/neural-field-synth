@@ -67,6 +67,7 @@ class BaseSiren(nn.Module):
         outermost_linear: bool = False,
         first_omega_0: int = 30,
         hidden_omega_0: int = 30.0,
+        freeze: bool = False,
         layer=SineLayer,
     ):
         super().__init__()
@@ -75,8 +76,11 @@ class BaseSiren(nn.Module):
         self.net.append(
             layer(in_features, hidden_features, is_first=True, omega_0=first_omega_0)
         )
+        if freeze:
+            self.net[-1].linear.weight.requires_grad_(False)
+            self.net[-1].linear.bias.requires_grad_(False)
 
-        for i in range(hidden_layers):
+        for _ in range(hidden_layers):
             self.net.append(
                 layer(
                     hidden_features,
@@ -85,9 +89,15 @@ class BaseSiren(nn.Module):
                     omega_0=hidden_omega_0,
                 )
             )
+            if freeze:
+                self.net[-1].linear.weight.requires_grad_(False)
+                self.net[-1].linear.bias.requires_grad_(False)
 
         if outermost_linear:
             final_linear = nn.Linear(hidden_features, out_features)
+            if freeze:
+                final_linear.weight.requires_grad_(False)
+                final_linear.bias.requires_grad_(False)
 
             # with torch.no_grad():
             #     final_linear.weight.uniform_(
@@ -150,6 +160,7 @@ class SirenFiLM(BaseSiren):
         outermost_linear: bool = False,
         first_omega_0: int = 30,
         hidden_omega_0: int = 30.0,
+        freeze: bool = False,
     ):
         super().__init__(
             in_features,
@@ -159,6 +170,7 @@ class SirenFiLM(BaseSiren):
             outermost_linear,
             first_omega_0,
             hidden_omega_0,
+            freeze,
             layer=SineFiLMLayer,
         )
 
