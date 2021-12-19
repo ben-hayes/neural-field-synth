@@ -1,11 +1,9 @@
-instrument_embedding_size: 8
-mlp_hidden_size: 1024
-mlp_hidden_layers: 5
-field_hidden_size: 384
+instrument_embedding_size: 2
+field_hidden_size: 512
 field_hidden_layers: 3
-wave_field_first_omega_0: 300
-wave_field_hidden_omega_0: 100
-noise_field_first_omega_0: 100
+wave_field_first_omega_0: 30
+wave_field_hidden_omega_0: 30
+noise_field_first_omega_0: 30
 noise_field_hidden_omega_0: 30
 noise_ir_length: 128
 noise_window_length: 128

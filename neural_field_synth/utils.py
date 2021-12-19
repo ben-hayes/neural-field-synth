@@ -27,11 +27,12 @@ def make_wavetable_spiral(
     freq = midi_to_hz(pitch).double()
     if pitch.ndim == 1:
         pitch = pitch[None, ...]
+        initial_phase = initial_phase[None]
 
     if pitch.ndim == 2 and pitch.shape[0] == 1:
         freq = freq.expand_as(t)
 
-    phase = freq.cumsum(dim=0) * 2 * np.pi / sample_rate + initial_phase[None]
+    phase = freq.cumsum(dim=0) * 2 * np.pi / sample_rate + initial_phase
 
     x, y = torch.cos(phase), torch.sin(phase)
 
