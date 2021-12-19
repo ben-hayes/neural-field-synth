@@ -99,11 +99,11 @@ class BaseSiren(nn.Module):
                 final_linear.weight.requires_grad_(False)
                 final_linear.bias.requires_grad_(False)
 
-            # with torch.no_grad():
-            #     final_linear.weight.uniform_(
-            #         -np.sqrt(6 / hidden_features) / hidden_omega_0,
-            #         np.sqrt(6 / hidden_features) / hidden_omega_0,
-            #     )
+            with torch.no_grad():
+                final_linear.weight.uniform_(
+                    -np.sqrt(6 / hidden_features) / hidden_omega_0,
+                    np.sqrt(6 / hidden_features) / hidden_omega_0,
+                )
 
             self.net.append(final_linear)
         else:
@@ -129,6 +129,7 @@ class Siren(BaseSiren):
         outermost_linear: bool = False,
         first_omega_0: int = 30,
         hidden_omega_0: int = 30.0,
+        freeze: bool = False,
     ):
         super().__init__(
             in_features,
@@ -138,6 +139,7 @@ class Siren(BaseSiren):
             outermost_linear,
             first_omega_0,
             hidden_omega_0,
+            freeze,
             layer=SineLayer,
         )
 

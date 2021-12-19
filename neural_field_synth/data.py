@@ -28,6 +28,7 @@ class NSynthDataset(torch.utils.data.Dataset):
         meta = self.metadata[key]
 
         instrument_id = meta["instrument"]
+        instrument_str = meta["instrument_str"]
         pitch = meta["pitch"]
         velocity = meta["velocity"]
 
@@ -42,6 +43,7 @@ class NSynthDataset(torch.utils.data.Dataset):
             "audio": audio,
             "sample_rate": sr,
             "instrument": instrument,
+            "instrument_str": instrument_str,
             "pitch": pitch,
             "velocity": velocity,
         }

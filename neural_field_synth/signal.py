@@ -31,7 +31,9 @@ class FIRNoiseSynth(nn.Module):
         h = F.pad(h, (0, self.window_length - self.ir_length))
         H = torch.fft.rfft(h)
 
-        noise = torch.rand(self.hop_length * H_re.shape[0] - 1, device=H_re.device)
+        noise = (
+            torch.rand(self.hop_length * H_re.shape[0] - 1, device=H_re.device) * 2 - 1
+        )
         X = torch.stft(noise, self.window_length, self.hop_length, return_complex=True)
         X = X.unsqueeze(0)
         Y = X * H.permute(1, 2, 0)
